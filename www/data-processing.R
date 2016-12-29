@@ -171,46 +171,6 @@ F_to_S_growth <- combo_map %>%
   filter(n_tested >= 15)
 
 
-# Tidy Status DF: Student/Subject/Season
-gen_status <- function(base){
-  status <- base %>% 
-    mutate(Grade = ifelse(prior_spring == 1, Grade + 1, Grade),
-           Season = ifelse(prior_spring == 1, "Prior Spring",Season),
-           Quartile = ceiling(NPR/25)) %>%
-    group_by(Grade, Subject, Season) %>%
-    mutate(n_tested = sum(n())) %>%
-    filter(n_tested >= 15)
-}
-
-# Tidy Growth DF: Student/Subject/Growth Season
-gen_growth <- function(molten_status) {
-  growth <- molten_status %>%
-    filter(Season == "Fall" | prior_spring == 1) %>%
-    left_join(y = growth_norms %>% filter(End_Season == "Spring") %>% select(Subject, Grade, Start_Season, RIT, Growth_Goal),
-              by = c("Subject","Grade","Season"="Start_Season","RIT")) %>%
-    mutate(Grade = ifelse(prior_spring == 1, Grade + 1, Grade)) %>%
-    left_join(y = molten_status %>% filter(Season == "Spring"), by = c("Subject","School","Grade","ID")) %>%
-    transmute(Subject = Subject,School = School,Grade = Grade,Id = ID,
-              Growth_Season = ifelse(Season.x == "Fall", "Fall-to-Spring",
-                                     ifelse(Season.x == "Spring","Spring-to-Spring",Season.x)),
-              Start_RIT = RIT.x, End_RIT = RIT.y, 
-              Start_Q = ceiling(NPR.x/25),
-              End_Q = ceiling(NPR.y/25),
-              Typical_Goal = Growth_Goal,
-              Start_Season = Season.x,
-              End_Season = Season.y) %>% 
-    left_join(y = multipliers, by = c("Grade","Start_Q")) %>%
-    mutate(Tiered_Goal = ceiling(Typical_Goal * multiplier),
-           Growth = End_RIT - Start_RIT,
-           Met_Typical = ifelse(Growth >= Typical_Goal, 1, 0),
-           Met_Tiered = ifelse(Growth >= Tiered_Goal, 1, 0),
-           Typ_not_Tiered = ifelse(Met_Typical == 1 & Met_Tiered == 0, 1, 0)) %>%
-    group_by(Grade, Subject, Growth_Season) %>%
-    mutate(n_tested = sum(n())) %>%
-    filter(n_tested >= 15)
-}
-
-
 #### ROLLUP ####
 # "Overall" Page: % Top Q for oldest grade
 rollup_status_overall <- function(status_df) {
