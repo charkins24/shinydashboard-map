@@ -11,6 +11,7 @@
 setwd("/Users/cormac/shinydashboard-map-data")
 
 ####  LOAD ####
+library(reshape2)
 library(plyr)
 library(tidyverse) # Mainly dplyr, tidyr, ggplot2
 
@@ -40,9 +41,6 @@ growth_norms <- readRDS("www/growth_norms.Rda")         # NWEA Growth Norms
 multipliers <- readRDS("www/multipliers.Rda")           # KIPP Foundation Tiered Target Multipliers
 caliber_multipliers <- read_csv("www/caliber_multipliers.csv") # Caliber Targets
 
-
-test <- fall_winter_2015_16 %>% filter( StudentID == "500552")
-
 #### MELT ####
 
 # Combine the data sets together
@@ -51,7 +49,7 @@ test <- fall_winter_2015_16 %>% filter( StudentID == "500552")
 # Join with the NWEA MAP growth norms
 # Join with the NWEA MAP SBAC cut scores (adapted from Rui)
 
-combo_df <- bind_rows(fall_winter_2015_16, winter_spring_2015_16) %>%
+combo_map <- bind_rows(fall_winter_2015_16, winter_spring_2015_16) %>%
   bind_rows(spring_spring_2015_16) %>%
   separate(TermTested, into = c("Season", "Year"), sep = " ") %>%
   transmute(Season = Season,
@@ -64,6 +62,7 @@ combo_df <- bind_rows(fall_winter_2015_16, winter_spring_2015_16) %>%
             First = StudentFirstName,
             Last = StudentLastName) %>%
   distinct() %>%
+  filter(Subject != "Language Usage") %>%
   left_join(y = status_norms, by = c("Grade","Subject","RIT","Season")) %>%
   left_join( y = sbac_cut_scores, by = c("Grade","Subject","RIT","Season")) %>%
   mutate(Quartile = ceiling(NPR/25)) %>%
@@ -71,48 +70,107 @@ combo_df <- bind_rows(fall_winter_2015_16, winter_spring_2015_16) %>%
   mutate(n_tested = sum(n())) %>%
   filter(n_tested >= 15)
 
+####  GENERATE  ####
+
 # Generate a Fall to Winter Growth data frame
 # Filter Season == Fall or Winter
-# Spread data into a start RIT and end RIT winter
+# Spread data into a start RIT and end RIT based on season
 # Join with growth norms to add the typical growth goal
 # Join with the caliber multiplier to add the the target growth goal
+# Calculate the actual growth
+# Calculate whether the typical growth and target growth goals were met
+# Drop cases missing either a Fall or Winter test score
+# Only keep cases in grades that have 15 or more students with valid scores
 
-# First Name, Last Name, Grade, Subject, Start_Season, End_Season, 
-# Start_RIT, End_RIT, Actual_Growth, Typical_Growth, Target_Growth
-# Met_Typical, Met_Target
+F_to_W_growth <- combo_map %>%
+  filter(Season == "Fall" | Season == "Winter") %>%
+  unite(temp, 4:9, sep = "/") %>%
+  unite(scores, c(RIT, NPR, SBAC, Quartile), sep = "/") %>%
+  select(-Year, -n_tested) %>%
+  spread(key = Season, value = scores) %>%
+  separate(Fall, c("Start_RIT", "Start_NPR", "Start_SBAC", "Start_Quartile"), sep = "/") %>%
+  separate(Winter, c("End_RIT", "End_NPR", "End_SBAC", "End_Quartile"), sep = "/") %>%
+  separate(temp, c("Subject", "School", "Grade", "ID", "First", "Last"), sep = "/") %>%
+  mutate_each(funs(as.numeric), vars = c(-Subject, -School, - First, -Last)) %>%
+  left_join(y = growth_norms %>%
+              filter(Start_Season == "Fall" & End_Season == "Winter") %>%
+              select(Subject, Grade, RIT, Growth_Goal),
+            by = c("Subject","Grade","Start_RIT" = "RIT")) %>%
+  left_join( y = caliber_multipliers, by = "Start_SBAC") %>%
+  mutate(Growth_Season = "Fall-to-Winter",
+         Actual_Growth = End_RIT - Start_RIT,
+         Typical_Growth = Growth_Goal,
+         Target_Growth = Growth_Goal*multiplier,
+         Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+         ) %>%
+  drop_na() %>%
+  group_by(Grade, Subject) %>%
+  mutate(n_tested = sum(n())) %>%
+  filter(n_tested >= 15)
 
 # Generate a Winter to Spring Growth data frame
 # Same as above but filter Season == Winter or Spring
 
+W_to_S_growth <- combo_map %>%
+  filter(Season == "Winter" | Season == "Spring") %>%
+  unite(temp, 4:9, sep = "/") %>%
+  unite(scores, c(RIT, NPR, SBAC, Quartile), sep = "/") %>%
+  select(-Year, -n_tested) %>%
+  spread(key = Season, value = scores) %>%
+  separate(Winter, c("Start_RIT", "Start_NPR", "Start_SBAC", "Start_Quartile"), sep = "/") %>%
+  separate(Spring, c("End_RIT", "End_NPR", "End_SBAC", "End_Quartile"), sep = "/") %>%
+  separate(temp, c("Subject", "School", "Grade", "ID", "First", "Last"), sep = "/") %>%
+  mutate_each(funs(as.numeric), vars = c(-Subject, -School, - First, -Last)) %>%
+  left_join(y = growth_norms %>%
+              filter(Start_Season == "Winter" & End_Season == "Spring") %>%
+              select(Subject, Grade, RIT, Growth_Goal),
+            by = c("Subject","Grade","Start_RIT" = "RIT")) %>%
+  left_join( y = caliber_multipliers, by = "Start_SBAC") %>%
+  mutate(Growth_Season = "Winter-to-Spring",
+         Actual_Growth = End_RIT - Start_RIT,
+         Typical_Growth = Growth_Goal,
+         Target_Growth = Growth_Goal*multiplier,
+         Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+  ) %>%
+  drop_na() %>%
+  group_by(Grade, Subject) %>%
+  mutate(n_tested = sum(n())) %>%
+  filter(n_tested >= 15)
+
+
 # Generate a Fall to Spring Growth data frame
 # Same as above but filter Season == Fall or Spring
 
+F_to_S_growth <- combo_map %>%
+  filter(Season == "Fall" | Season == "Spring") %>%
+  unite(temp, 4:9, sep = "/") %>%
+  unite(scores, c(RIT, NPR, SBAC, Quartile), sep = "/") %>%
+  select(-Year, -n_tested) %>%
+  spread(key = Season, value = scores) %>%
+  separate(Fall, c("Start_RIT", "Start_NPR", "Start_SBAC", "Start_Quartile"), sep = "/") %>%
+  separate(Spring, c("End_RIT", "End_NPR", "End_SBAC", "End_Quartile"), sep = "/") %>%
+  separate(temp, c("Subject", "School", "Grade", "ID", "First", "Last"), sep = "/") %>%
+  mutate_each(funs(as.numeric), vars = c(-Subject, -School, - First, -Last)) %>%
+  left_join(y = growth_norms %>%
+              filter(Start_Season == "Fall" & End_Season == "Spring") %>%
+              select(Subject, Grade, RIT, Growth_Goal),
+            by = c("Subject","Grade","Start_RIT" = "RIT")) %>%
+  left_join( y = caliber_multipliers, by = "Start_SBAC") %>%
+  mutate(Growth_Season = "Fall-to-Spring",
+         Actual_Growth = End_RIT - Start_RIT,
+         Typical_Growth = Growth_Goal,
+         Target_Growth = Growth_Goal*multiplier,
+         Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+  ) %>%
+  drop_na() %>%
+  group_by(Grade, Subject) %>%
+  mutate(n_tested = sum(n())) %>%
+  filter(n_tested >= 15)
 
 
-melt_cdf <- function(combo_cdf) {
-  processed_data <- combo_cdf %>%
-    filter(TestType == "Survey With Goals") %>%
-    transmute(Fall = TestRITScore - FallToSpringObservedGrowth,
-              Winter = Fall + FallToWinterObservedGrowth,
-              Priorspring = TestRITScore - SpringToSpringObservedGrowth,
-              Spring = TestRITScore,
-              Subject = as.character(Discipline),
-              School = as.character(SchoolName),
-              Grade = as.integer(revalue(as.character(Grade), c('K' = '0'))),
-              ID = StudentID,
-              First = StudentFirstName,
-              Last = StudentLastName) %>%
-    filter(Grade <= 8) %>%
-    gather(Season, RIT, -School, -Grade, -Subject, -ID, -First, -Last,
-           na.rm = TRUE, convert = TRUE) %>%
-    mutate(prior_spring = ifelse(Season == "Priorspring", 1,0),
-           Grade = ifelse(prior_spring == 1, Grade - 1, Grade),
-           Season = ifelse(Season == "Priorspring","Spring", Season)) %>%
-    left_join(y = status_norms, by = c("Grade","Subject","RIT","Season"))
-}
-
-
-####  GENERATE  ####
 # Tidy Status DF: Student/Subject/Season
 gen_status <- function(base){
   status <- base %>% 
