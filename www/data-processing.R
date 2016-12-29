@@ -1,5 +1,5 @@
 # Data Prep:
-# Use this file to prepare the SPRING CDF data visualizations
+# Use this file to prepare the Caliber 2015-16 ASG data visualizations
 #   0 - LOAD all data frames that are needed to transform data
 #
 # Three main data tasks are accomplished in this file
@@ -8,23 +8,87 @@
 #   2 - GENERATE base data frames for any graphical rollup (prefix "gen")
 #   3 - ROLLUP data for graphs (prefix "roll")
 
-# setwd("/Users/cormac/shinydashboard-map") # Development
-
+setwd("/Users/cormac/shinydashboard-map-data")
 
 ####  LOAD ####
 library(plyr)
-library(tidyverse)
+library(tidyverse) # Mainly dplyr, tidyr, ggplot2
 
-fall_winter_2015_16 <- read_csv("f_w_asg_2015-16.csv")
-winter_spring_2015_16 <- read_csv("w_s_asg_2015-16.csv")
-spring_spring_2015_16 <- read_csv("s_s_asg_2015-16.csv")
+fall_winter_2015_16 <- read_csv("f_w_asg_2015-16.csv",
+                                col_types = cols(ClassName = col_character(),
+                                                 StudentGrade = col_character()
+                                                 )
+                                )
 
-sbac_cut_scores <- readRDS("www/status_norms.Rda")      # SBAC cut scores
+winter_spring_2015_16 <- read_csv("w_s_asg_2015-16.csv",
+                                  col_types = cols(ClassName = col_character(),
+                                                   StudentGrade = col_character()
+                                                   )
+                                  )
+
+spring_spring_2015_16 <- read_csv("s_s_asg_2015-16.csv",
+                                  col_types = cols(ClassName = col_character(),
+                                                   StudentGrade = col_character()
+                                  )
+)
+
+setwd("/Users/cormac/shinydashboard-map") # Development
+
+sbac_cut_scores <- readRDS("www/sbac_cut_scores.Rda")      # SBAC cut scores
 status_norms <- readRDS("www/status_norms.Rda")         # NWEA Percentile Norms
 growth_norms <- readRDS("www/growth_norms.Rda")         # NWEA Growth Norms
 multipliers <- readRDS("www/multipliers.Rda")           # KIPP Foundation Tiered Target Multipliers
+caliber_multipliers <- read_csv("www/caliber_multipliers.csv") # Caliber Targets
+
+
+test <- fall_winter_2015_16 %>% filter( StudentID == "500552")
 
 #### MELT ####
+
+# Combine the data sets together
+# Separate the term into season and year
+# Create and keep variables with clearer names
+# Join with the NWEA MAP growth norms
+# Join with the NWEA MAP SBAC cut scores (adapted from Rui)
+
+combo_df <- bind_rows(fall_winter_2015_16, winter_spring_2015_16) %>%
+  bind_rows(spring_spring_2015_16) %>%
+  separate(TermTested, into = c("Season", "Year"), sep = " ") %>%
+  transmute(Season = Season,
+            Year = Year,
+            RIT = StartRIT,
+            Subject = Subject,
+            School = as.character(SchoolName),
+            Grade = as.integer(revalue(as.character(StudentGrade), c('K' = '0'))),
+            ID = StudentID,
+            First = StudentFirstName,
+            Last = StudentLastName) %>%
+  distinct() %>%
+  left_join(y = status_norms, by = c("Grade","Subject","RIT","Season")) %>%
+  left_join( y = sbac_cut_scores, by = c("Grade","Subject","RIT","Season")) %>%
+  mutate(Quartile = ceiling(NPR/25)) %>%
+  group_by(Grade, Subject, Season) %>%
+  mutate(n_tested = sum(n())) %>%
+  filter(n_tested >= 15)
+
+# Generate a Fall to Winter Growth data frame
+# Filter Season == Fall or Winter
+# Spread data into a start RIT and end RIT winter
+# Join with growth norms to add the typical growth goal
+# Join with the caliber multiplier to add the the target growth goal
+
+# First Name, Last Name, Grade, Subject, Start_Season, End_Season, 
+# Start_RIT, End_RIT, Actual_Growth, Typical_Growth, Target_Growth
+# Met_Typical, Met_Target
+
+# Generate a Winter to Spring Growth data frame
+# Same as above but filter Season == Winter or Spring
+
+# Generate a Fall to Spring Growth data frame
+# Same as above but filter Season == Fall or Spring
+
+
+
 melt_cdf <- function(combo_cdf) {
   processed_data <- combo_cdf %>%
     filter(TestType == "Survey With Goals") %>%
@@ -44,7 +108,7 @@ melt_cdf <- function(combo_cdf) {
     mutate(prior_spring = ifelse(Season == "Priorspring", 1,0),
            Grade = ifelse(prior_spring == 1, Grade - 1, Grade),
            Season = ifelse(Season == "Priorspring","Spring", Season)) %>%
-    left_join(y = status_norms, by = c("Grade","Subject","RIT","Season")) 
+    left_join(y = status_norms, by = c("Grade","Subject","RIT","Season"))
 }
 
 
