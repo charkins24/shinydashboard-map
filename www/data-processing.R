@@ -102,7 +102,8 @@ F_to_W_growth <- combo_map %>%
          Typical_Growth = Growth_Goal,
          Target_Growth = Growth_Goal*multiplier,
          Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
-         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0),
+         Typ_not_Target = ifelse(Met_Typical == 1 & Met_Target == 0, 1, 0)
          ) %>%
   drop_na() %>%
   group_by(Grade, Subject) %>%
@@ -132,7 +133,8 @@ W_to_S_growth <- combo_map %>%
          Typical_Growth = Growth_Goal,
          Target_Growth = Growth_Goal*multiplier,
          Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
-         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0),
+         Typ_not_Target = ifelse(Met_Typical == 1 & Met_Target == 0, 1, 0)
   ) %>%
   drop_na() %>%
   group_by(Grade, Subject) %>%
@@ -163,31 +165,23 @@ F_to_S_growth <- combo_map %>%
          Typical_Growth = Growth_Goal,
          Target_Growth = Growth_Goal*multiplier,
          Met_Typical = ifelse( Actual_Growth >= Typical_Growth,1,0),
-         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0)
+         Met_Target = ifelse( Actual_Growth >= Target_Growth,1,0),
+         Typ_not_Target = ifelse(Met_Typical == 1 & Met_Target == 0, 1, 0)
   ) %>%
   drop_na() %>%
   group_by(Grade, Subject) %>%
   mutate(n_tested = sum(n())) %>%
   filter(n_tested >= 15)
 
+# Combine three dataframes into one growth dataframe
+# You can always filter by growth season later
+
+combo_growth <- rbind(F_to_W_growth, W_to_S_growth) %>%
+  rbind(F_to_S_growth)
+
 
 #### ROLLUP ####
-# "Overall" Page: % Top Q for oldest grade
-rollup_status_overall <- function(status_df) {
-  grade_level <-  status_df %>%
-    filter(Season == "Spring") %>%
-    group_by(Subject, School, Grade, Quartile) %>%
-    summarise(n = n()) %>%
-    group_by(Subject, School, Grade) %>%
-    mutate(total = sum(n)) %>%
-    filter(total >=15,
-           Quartile >= 3) %>%
-    mutate(percent = n / total,
-           label_loc = cumsum(percent) - (.5 * percent),
-           label = paste0(as.character(round(percent,2)*100),"%")) %>%
-    group_by(Subject, School) %>%
-    filter(Grade == max(Grade))
-}
+
 
 # "Overall" Page: % of students meeting tiered targets
 rollup_growth_overall <- function(growth_df){
