@@ -8,14 +8,18 @@
 #   2 - GENERATE base data frames for any graphical rollup (prefix "gen")
 #   3 - ROLLUP data for graphs (prefix "roll")
 
-# setwd("~/../Dropbox/github/shiny_projects/shinydashboard-map/") # Development
+# setwd("/Users/cormac/shinydashboard-map") # Development
+
 
 ####  LOAD ####
 library(plyr)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 
-# test_cdf <- read.csv("test_data/ComboStudentAssessment OH.csv")  # CSV for development
+fall_winter_2015_16 <- read_csv("f_w_asg_2015-16.csv")
+winter_spring_2015_16 <- read_csv("w_s_asg_2015-16.csv")
+spring_spring_2015_16 <- read_csv("s_s_asg_2015-16.csv")
+
+sbac_cut_scores <- readRDS("www/status_norms.Rda")      # SBAC cut scores
 status_norms <- readRDS("www/status_norms.Rda")         # NWEA Percentile Norms
 growth_norms <- readRDS("www/growth_norms.Rda")         # NWEA Growth Norms
 multipliers <- readRDS("www/multipliers.Rda")           # KIPP Foundation Tiered Target Multipliers
