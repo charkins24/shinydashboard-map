@@ -1,3 +1,16 @@
+---
+title: "sbac_sankey"
+author: "Cormac Harkins"
+date: "December 29, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
 # Data Prep:
 # Use this file to prepare the Caliber 2015-16 ASG data visualizations
 #   0 - LOAD all data frames that are needed to transform data
@@ -188,137 +201,6 @@ library(rCharts)
 library(googleVis)
 
 
-# "Overall" Page: % of students meeting growth goals
-
-rollup_growth_overall <-  combo_growth %>%
-    group_by(Subject, School, Grade, Growth_Season) %>%
-    summarise(Target = mean(Met_Target),
-              Typ_not = mean(Typ_not_Target),
-              n = n()) %>%
-    gather(growth, total, -n, -School,-Subject, -Growth_Season, -Grade, convert = TRUE) %>%
-    ungroup() %>%
-    mutate(total_label = ifelse(abs(total) > .1, paste(as.character(round(abs(total),2)*100),"%"),"")) %>%
-    group_by(School, Grade, Subject) %>%
-    mutate(label_loc = cumsum(total) - .5 * total) %>%
-    filter(n >= 15)
-
-# Graph
-
-rx_growth_overall <- rollup_growth_overall %>%
-  filter(Growth_Season == "Fall-to-Spring") %>%
-  ungroup() %>%
-  select(Subject, Grade, total, growth) %>%
-  spread(growth, total) %>% 
-  unite(New_Subject, Subject, Grade, sep = "<br>") %>%
-  select(New_Subject, Typical = Typ_not, Target)
-
-
-# Chart      
-gg <- rCharts:::Highcharts$new()
-gg$chart(type = "column", backgroundColor = 'rgba(255, 255, 255, 0.1)')
-gg$data(rx_growth_overall)
-gg$title(text = "Growth by Grade")      
-gg$plotOptions(column = list(stacking = "normal", 
-                             dataLabels=list(enabled=TRUE, 
-                                             formatter = "#! function () {return (Math.round(Math.abs(this.y *100)) >= 10 ?
-                                             Math.round(Math.abs(this.y *100))+ '%': '') }  !#",
-                                             style = list(textShadow = '0 0 0px black',
-                                                          fontWeight = 'normal'))))
-gg$xAxis(categories = unique(rx_growth_overall$New_Subject))
-gg$yAxis(title = list(text = "% Meeting Growth Target"), max = 1, 
-         labels = list(formatter = "#! function() { return this.value * 100 + '%'; } !#"),
-         stackLabels = list(enabled = TRUE, 
-                            formatter = "#! function() { return Math.round(this.total * 100) + '%'; } !#",
-                            style = list(textShadow = '0 0 0px black',
-                                         fontWeight = 'normal',
-                                         color = 'gray')))
-gg$colors(c("#BCD631","#439539"))
-gg$legend(layout = "vertical")
-gg$tooltip(formatter = "#! function() {return Math.round(this.y *100) + '%' } !#")
-gg$exporting(enabled = T)
-
-gg # Display the final graph
-
-
-
-# "Growth by Starting Q" Page: % of students meeting targets by starting quartile
-
-
-# "SBAC" Page: Shift in SBAC distribution from season to season
-
-rollup_growth_sbac <- combo_growth %>%
-  select(School, Grade, Subject, ID, Growth_Season, Start_SBAC, End_SBAC) %>%
-  mutate(Start_Season = "Start",
-         End_Season = "End") %>%
-  unite(Start, Start_SBAC, Start_Season, sep = "_") %>%
-  unite(End, End_SBAC, End_Season, sep = "_") %>%
-  gather(Season, value, -Subject, -School, -Grade, -ID, -Growth_Season) %>%
-  separate(col = value, sep = "_", into = c("SBAC_Band", "display"), convert = TRUE) %>%
-  group_by(School, Grade, Subject, Growth_Season, SBAC_Band, display) %>%
-  summarise(total = n()) %>%
-  group_by(School, Grade, Subject, Growth_Season, display) %>%
-  mutate(total = total / sum(total)) %>%
-  mutate(total = ifelse(SBAC_Band <= 2, total * -1 , total)) %>%
-  ungroup() %>%
-  mutate(display = paste0("Grade ", as.character(Grade), "<br>", display)) %>%
-  spread(SBAC_Band, total)
-
-# Data
-
-# Need to figure out how to adjust the subject and growth season
-
-rx_growth_sbac <- rollup_growth_sbac %>%
-  filter(Subject == "Mathematics", 
-         Growth_Season == "Fall-to-Spring") %>%
-  arrange(Grade, desc(display)) %>%
-  select(display, `Not Met` = `1`, `Nearly Met` = `2`, `Exceeded` = `4`, `Met` = `3`)
-
-# Formatting changes      
-order <- list(`Not Met` = 4, `Nearly Met` = 3, `Met` = 2, `Exceeded` = 1)
-
-# Plot
-sbac_shift <- rCharts:::Highcharts$new()
-sbac_shift$chart(type = "column", backgroundColor = 'rgba(255, 255, 255, 0.1)', height = 450)
-sbac_shift$data(rx_growth_sbac)
-sbac_shift$title(text = "SBAC Shifts")
-sbac_shift$plotOptions(column = list(stacking = "normal", 
-                             dataLabels=list(enabled=TRUE, 
-                                             formatter = "#! function () {return (Math.round(Math.abs(this.y *100)) >= 10 ?
-                                             Math.round(Math.abs(this.y *100))+ '%': '') }  !#",
-                                             style = list(textShadow = '0 0 0px black',
-                                                          fontWeight = 'normal')))) 
-sbac_shift$xAxis(categories = (unique(rx_growth_sbac$display)))
-sbac_shift$yAxis(title = list(text = "Size of SBAC Band"), max = 1, labels = list(formatter = "#! function() { return Math.abs(this.value) * 100 + '%'; } !#"))
-sbac_shift$tooltip(formatter = "#! function() {return Math.round(Math.abs(this.y *100)) + '%' } !#")
-sbac_shift$colors(c('#8D8685','#CFCCC1','#255694','#60A2D7'))
-sbac_shift$legend(layout = "vertical")
-sbac_shift$exporting(enabled = TRUE)
-sbac_shift$params$series <- lapply(sbac_shift$params$series, function(d){
-  temp = order[d$name]
-  names(temp) = NULL
-  d$legendIndex = temp
-  return(d)
-})
-
-sbac_shift # Plot the final graph
-
-# "Quartile" Page: Shift in quartile distribution from season to season
-rollup_growth_quartile <-  combo_growth %>%
-  select(School, Grade, Subject, ID, Growth_Season, Start_Quartile, End_Quartile) %>%
-  mutate(Start_Season = "Start", End_Season = "End") %>%
-  unite(Start, Start_Quartile, Start_Season, sep = "_") %>%
-  unite(End, End_Quartile, End_Season, sep = "_") %>%
-  gather(Season, value, -Subject, -School, -Grade, -ID, -Growth_Season) %>%
-  separate(col = value, sep = "_", into = c("Quartile", "display"), convert = TRUE) %>%
-  group_by(School, Grade, Subject, Growth_Season, Quartile, display) %>%
-  summarise(total = n()) %>%
-  group_by(School, Grade, Subject, Growth_Season, display) %>%
-  mutate(total = total / sum(total)) %>%
-  mutate(total = ifelse(Quartile <= 2, total * -1 , total)) %>%
-  ungroup() %>%
-  mutate(display = paste0("Grade ", as.character(Grade), "<br>", display)) %>%
-  spread(Quartile, total)
-
 # "SBAC by Grade" page: Sankey chart of 
 rollup_growth_sbac_sankey <-
   combo_growth %>%
@@ -330,17 +212,14 @@ rollup_growth_sbac_sankey <-
            rank = Start_SBAC + End_SBAC) %>%
     ungroup() %>%   
     filter(cumtotal >= 15) %>%
-    mutate(Start_SBAC = paste0("Level ", as.character(Start_SBAC), " Start"),
-           End_SBAC = paste0("Level ", as.character(End_SBAC), " End")) %>%
+    mutate(Start_SBAC = paste0("SBAC", as.character(Start_SBAC), " Start"),
+           End_SBAC = paste0("Q", as.character(End_SBAC), " End")) %>%
     arrange(desc(rank), desc(Start_SBAC), desc(End_SBAC))
 
 sbac_sankey <- rollup_growth_sbac_sankey %>%
-  filter(Grade == "4" &
-           Growth_Season == "Fall-to-Spring" &
-           Subject == "Mathematics") %>%
+  filter(Grade == "4") %>%
   arrange(School, desc(Start_SBAC), desc(End_SBAC), Growth_Season, Grade, Subject) %>%        
   select(Start_SBAC, End_SBAC, Total)
-
 
 gvisSankey(sbac_sankey, from = "Start_SBAC", to = "End_SBAC", weight = "Total",
            options = list(height=400, width=600,
@@ -366,57 +245,5 @@ gvisSankey(sbac_sankey, from = "Start_SBAC", to = "End_SBAC", weight = "Total",
                 )
            )
 
-summarise(sbac_sankey,
-          total = sum(Total))
-
-
-# "Quartile by Grade" page: Sankey chart of 
-rollup_growth_quartile_sankey <- function(growth_df) {
-  growth_df %>%
-  filter(Grade <= 8) %>%
-  group_by(Subject, School, Grade, Growth_Season, Start_Q, End_Q) %>%
-  summarise(Total = n()) %>%
-  group_by(Subject, School, Grade, Growth_Season) %>%
-  mutate(cumtotal = sum(Total),
-         rank = Start_Q + End_Q) %>%
-  ungroup() %>%   
-  filter(cumtotal >= 15) %>%
-  mutate(Start_Q = paste0("Q", as.character(Start_Q), " Start"),
-         End_Q = paste0("Q", as.character(End_Q), " End")) %>%
-  arrange(desc(rank), desc(Start_Q), desc(End_Q))
-}
-
-#### TABLES ####
-export_molten <- function(status_df) {
-  status_df %>%
-  select(School, Grade, Subject, ID, First, Last, Season, RIT, NPR, Quartile)
-}
-
-export_growth <- function(status_df) {
-  status_df %>%
-  ungroup() %>%
-  select(Subject, School, Grade, ID, First, Last, Season, RIT, NPR, Quartile) %>%
-  unite(instance, -School, -Grade, -ID, -Season, -Subject, -First, -Last) %>%
-  spread(Season, instance, convert = TRUE) %>%
-  separate(Fall, c("F_RIT","F_NPR","F_Q"), sep = "_", convert = TRUE,remove = FALSE) %>%
-  separate(Spring, c("S_RIT","S_NPR","S_Q"), sep = "_", convert = TRUE,remove = FALSE) %>%   
-  separate(`Prior Spring`, c("PS_RIT","PS_NPR","PS_Q"), sep = "_", convert = TRUE,remove = FALSE) %>%
-  select(School, Grade, Subject, ID, First, Last, PS_RIT, PS_NPR, F_RIT, F_NPR, S_RIT, S_NPR)  
-}
-
-multiplier_table <- function() {
-  k4    <- multipliers %>% 
-           arrange(Grade, Start_Q) %>% 
-           filter(Grade == 4) %>% 
-           transmute(`Starting Quartile` = Start_Q,
-                     `K-4th` = multiplier)
-  
-  final <- multipliers %>% 
-           arrange(Grade, Start_Q) %>% 
-           filter(Grade == 3) %>% 
-           transmute(`Starting Quartile` = Start_Q,
-                     `K-3rd` = multiplier) %>%
-           left_join(k4)
-  return(final)
-}
+```
 

@@ -1,0 +1,244 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<style type="text/css">
+.knitr .inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.rimage .left {
+  text-align: left;
+}
+.rimage .right {
+  text-align: right;
+}
+.rimage .center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<title>SankeyID1da5123d879</title>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<style type="text/css">
+body {
+  color: #444444;
+  font-family: Arial,Helvetica,sans-serif;
+  font-size: 75%;
+  }
+  a {
+  color: #4D87C7;
+  text-decoration: none;
+}
+</style>
+</head>
+<body>
+ <!-- Sankey generated in R 3.2.3 by googleVis 0.6.1 package -->
+<!-- Thu Dec 29 20:08:30 2016 -->
+
+
+<!-- jsHeader -->
+<script type="text/javascript">
+ 
+// jsData 
+function gvisDataSankeyID1da5123d879 () {
+var data = new google.visualization.DataTable();
+var datajson =
+[
+ [
+"Level 4 Start",
+"Level 4 End",
+2
+],
+[
+"Level 3 Start",
+"Level 4 End",
+1
+],
+[
+"Level 3 Start",
+"Level 3 End",
+5
+],
+[
+"Level 3 Start",
+"Level 2 End",
+1
+],
+[
+"Level 2 Start",
+"Level 3 End",
+4
+],
+[
+"Level 2 Start",
+"Level 2 End",
+15
+],
+[
+"Level 2 Start",
+"Level 1 End",
+6
+],
+[
+"Level 1 Start",
+"Level 3 End",
+3
+],
+[
+"Level 1 Start",
+"Level 2 End",
+7
+],
+[
+"Level 1 Start",
+"Level 1 End",
+40
+] 
+];
+data.addColumn('string','Start_SBAC');
+data.addColumn('string','End_SBAC');
+data.addColumn('number','Total');
+data.addRows(datajson);
+return(data);
+}
+ 
+// jsDrawChart
+function drawChartSankeyID1da5123d879() {
+var data = gvisDataSankeyID1da5123d879();
+var options = {};
+options["width"] = 600;
+options["height"] = 400;
+options["sankey"] = {
+                          link: {
+                          colorMode: 'gradient',
+                          colors: ['#255694','#60A2D7','#CFCCC1','#8D8685']
+                          }, 
+                          node: {
+                          label: {
+                          fontSize: 24,
+                          color: '#000',
+                          bold: true,
+                          italic: false
+                          },
+                          interactivity: true, // Allows you to select nodes.
+                          labelPadding: 6,     // Horizontal distance between the label and the node.
+                          nodePadding: 10,     // Vertical distance between nodes.
+                          width: 20,            // Thickness of the node.
+                          colors: ['#255694','#60A2D7','#CFCCC1','#8D8685']
+                          }
+                          };
+
+
+    var chart = new google.visualization.Sankey(
+    document.getElementById('SankeyID1da5123d879')
+    );
+    chart.draw(data,options);
+    
+
+}
+  
+ 
+// jsDisplayChart
+(function() {
+var pkgs = window.__gvisPackages = window.__gvisPackages || [];
+var callbacks = window.__gvisCallbacks = window.__gvisCallbacks || [];
+var chartid = "sankey";
+  
+// Manually see if chartid is in pkgs (not all browsers support Array.indexOf)
+var i, newPackage = true;
+for (i = 0; newPackage && i < pkgs.length; i++) {
+if (pkgs[i] === chartid)
+newPackage = false;
+}
+if (newPackage)
+  pkgs.push(chartid);
+  
+// Add the drawChart function to the global list of callbacks
+callbacks.push(drawChartSankeyID1da5123d879);
+})();
+function displayChartSankeyID1da5123d879() {
+  var pkgs = window.__gvisPackages = window.__gvisPackages || [];
+  var callbacks = window.__gvisCallbacks = window.__gvisCallbacks || [];
+  window.clearTimeout(window.__gvisLoad);
+  // The timeout is set to 100 because otherwise the container div we are
+  // targeting might not be part of the document yet
+  window.__gvisLoad = setTimeout(function() {
+  var pkgCount = pkgs.length;
+  google.load("visualization", "1", { packages:pkgs, callback: function() {
+  if (pkgCount != pkgs.length) {
+  // Race condition where another setTimeout call snuck in after us; if
+  // that call added a package, we must not shift its callback
+  return;
+}
+while (callbacks.length > 0)
+callbacks.shift()();
+} });
+}, 100);
+}
+ 
+// jsFooter
+</script>
+ 
+<!-- jsChart -->  
+<script type="text/javascript" src="https://www.google.com/jsapi?callback=displayChartSankeyID1da5123d879"></script>
+ 
+<!-- divChart -->
+  
+<div id="SankeyID1da5123d879" 
+  style="width: 600; height: 400;">
+</div>
+ <div><span>Data: sbac_sankey &#8226; Chart ID: <a href="Chart_SankeyID1da5123d879.html">SankeyID1da5123d879</a> &#8226; <a href="https://github.com/mages/googleVis">googleVis-0.6.1</a></span><br /> 
+<!-- htmlFooter -->
+<span> 
+  R version 3.2.3 (2015-12-10) 
+  &#8226; <a href="https://developers.google.com/terms/">Google Terms of Use</a> &#8226; <a href="https://google-developers.appspot.com/chart/interactive/docs/gallery/sankey">Documentation and Data Policy</a>
+</span></div>
+</body>
+</html>
